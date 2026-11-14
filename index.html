@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="A private offline video library stored in this browser.">
+  <title>MyTube Offline Library</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="MyTube home"><span class="brand-mark">▶</span> MyTube</a>
+    <span class="offline-indicator"><span class="dot"></span><span id="network-status">Checking connection…</span></span>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">YOUR PERSONAL MEDIA SPACE</p>
+        <h1>Watch your library.<br><span>Even offline.</span></h1>
+        <p class="intro">Import video files you own or are authorised to store. MyTube keeps them in this browser's local storage and plays them without an internet connection.</p>
+      </div>
+      <div class="hero-icon" aria-hidden="true">▶</div>
+    </section>
+
+    <section class="toolbar" aria-label="Library controls">
+      <label class="import-button" for="video-picker">＋ Import videos</label>
+      <input id="video-picker" type="file" accept="video/*,.mp4,.webm,.m4v,.mov,.mkv" multiple hidden>
+      <input id="search" class="search" type="search" placeholder="Search your library…" aria-label="Search videos">
+    </section>
+
+    <section class="storage-panel">
+      <div>
+        <strong>Browser storage</strong>
+        <p id="storage-info">Checking available storage…</p>
+      </div>
+      <button id="refresh-storage" class="quiet-button" type="button">Refresh</button>
+    </section>
+
+    <div class="section-heading">
+      <div>
+        <h2>Your videos</h2>
+        <p id="video-count">Loading library…</p>
+      </div>
+      <span class="local-tag">PRIVATE TO THIS BROWSER</span>
+    </div>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+    <section id="video-grid" class="video-grid" aria-label="Imported videos"></section>
+
+    <section id="empty-state" class="empty-state" hidden>
+      <div class="empty-icon">▣</div>
+      <h3>Your library is empty</h3>
+      <p>Choose a video file from your device to add it to MyTube.</p>
+      <label class="import-button" for="video-picker">＋ Choose video files</label>
+    </section>
+
+    <footer>
+      <p>MyTube stores imported files in this browser's IndexedDB. It does not download videos from YouTube or access YouTube's protected in-app downloads.</p>
+    </footer>
+  </main>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
