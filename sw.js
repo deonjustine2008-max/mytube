@@ -1,5 +1,6 @@
 
-const CACHE_NAME = "mytube-shell-v2";
+const CACHE_NAME = "mytube-shell-v3
+  ";
 
 const APP_SHELL = [
   "./",
