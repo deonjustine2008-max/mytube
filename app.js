@@ -186,7 +186,8 @@ if (!selected.length) return;
 await requestPersistentStorage();
 let imported = 0;
 let failed = 0;
-
+let lastError = "";
+  
 for (const file of selected) {
 if (!file.type.startsWith("video/") && !/.(mp4|webm|m4v|mov|mkv|ogv)$/i.test(file.name)) {
 failed++;
@@ -207,6 +208,14 @@ try {
 } catch (error) {
   failed++;
 
+  lastError = `${error?.name || "Unknown error"}: ${error?.message || "No details available"}`;
+
+  console.error("MyTube database import error:", error);
+
+  if (error?.name === "QuotaExceededError") {
+    break;
+  }
+}
   console.error("MyTube import error:", {
     name: error?.name,
     message: error?.message,
@@ -228,7 +237,7 @@ picker.value = "";
 if (imported > 0) {
 setMessage(Imported ${imported} video(s). The originals were not deleted.);
 } else if (failed > 0) {
-setMessage("No videos were imported. Check file type and available storage.", true);
+setMessage(`Import failed: ${lastError}`, true);
 }
 await renderLibrary();
 }
