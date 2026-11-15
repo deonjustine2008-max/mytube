@@ -1,10 +1,14 @@
-const CACHE_NAME = "mytube-shell-v1";
+
+const CACHE_NAME = "mytube-shell-v2";
+
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./storage-manager.js",
+  "./storage-manager.css"
 ];
 
 self.addEventListener("install", event => {
