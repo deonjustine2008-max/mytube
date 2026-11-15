@@ -1,0 +1,142 @@
+/* MyTube Storage Manager */
+
+.storage-manager {
+  max-width: 760px;
+  margin: 24px auto;
+  padding: 18px;
+  color: var(--text-color, #222);
+  font-family: Arial, sans-serif;
+}
+
+.storage-manager h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.sm-description {
+  margin: 0 0 20px;
+  color: var(--secondary-text, #777);
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.sm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sm-card {
+  padding: 16px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 12px;
+  background: var(--card-background, #fff);
+  min-width: 0;
+}
+
+.sm-card-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--secondary-text, #777);
+  font-size: 13px;
+}
+
+.sm-card-value {
+  display: block;
+  font-size: 21px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sm-details {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 12px;
+  background: var(--card-background, #fff);
+}
+
+.sm-details h3 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+
+.sm-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border-color, #eee);
+  font-size: 14px;
+}
+
+.sm-detail-row:last-child {
+  border-bottom: 0;
+}
+
+.sm-detail-row span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.sm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.sm-button {
+  border: 0;
+  border-radius: 9px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--button-background, #245bd6);
+  color: var(--button-text, #fff);
+}
+
+.sm-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sm-button-secondary {
+  background: var(--secondary-button-background, #e9edf5);
+  color: var(--text-color, #222);
+}
+
+.sm-message {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--notice-background, #eef4ff);
+  color: var(--text-color, #222);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sm-message.sm-error {
+  background: #fff0f0;
+  color: #a32121;
+}
+
+@media (max-width: 420px) {
+  .storage-manager {
+    padding: 12px;
+  }
+
+  .sm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sm-card-value {
+    font-size: 19px;
+  }
+
+  .sm-button {
+    width: 100%;
+  }
+  }
