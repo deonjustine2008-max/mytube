@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyTube - Video Recovery Test</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #10131c;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      color: #91a4ff;
+    }
+
+    .video-card {
+      background: #202638;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 12px;
+    }
+
+    video {
+      width: 100%;
+      max-height: 300px;
+      background: black;
+      border-radius: 8px;
+    }
+
+    .status {
+      color: #83e6a5;
+    }
+
+    .error {
+      color: #ff9292;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>MyTube Video Recovery</h1>
+
+  <p id="status">Checking your original video database...</p>
+
+  <div id="video-list"></div>
+
+  <script>
+    const DB_NAME = "mytube-library";
+    const STORE_NAME = "videos";
+
+    const status = document.getElementById("status");
+    const videoList = document.getElementById("video-list");
+
+    const videoUrls = [];
+
+    function loadVideos(db) {
+      const transaction = db.transaction(
+        STORE_NAME,
+        "readonly"
+      );
+
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.openCursor();
+
+      let count = 0;
+
+      request.onsuccess = event => {
+        const cursor = event.target.result;
+
+        if (!cursor) return;
+
+        const record = cursor.value;
+
+        count++;
+
+        const card = document.createElement("div");
+        card.className = "video-card";
+
+        const heading = document.createElement("h3");
+        heading.textContent =
+          "Video " + count + ": " + record.name;
+
+        const details = document.createElement("p");
+        details.textContent =
+          "Size: " +
+          (record.file?.size
+            ? (record.file.size / (1024 * 1024)).toFixed(2) + " MB"
+            : "Unknown");
+
+        card.append(heading, details);
+
+        if (record.file instanceof Blob) {
+          const player = document.createElement("video");
+
+          player.controls = true;
+          player.preload = "metadata";
+          player.playsInline = true;
+
+          const url = URL.createObjectURL(record.file);
+          videoUrls.push(url);
+
+          player.src = url;
+
+          player.onerror = () => {
+            details.textContent +=
+              " | Playback error. The file was retrieved, but the browser could not play it.";
+          };
+
+          card.append(player);
+        } else {
+          const warning = document.createElement("p");
+          warning.className = "error";
+          warning.textContent =
+            "Video file object is unavailable.";
+
+          card.append(warning);
+        }
+
+        videoList.append(card);
+
+        cursor.continue();
+      };
+
+      request.onerror = () => {
+        status.textContent = "Could not read video records.";
+        status.className = "error";
+      };
+
+      transaction.oncomplete = () => {
+        status.textContent = count
+          ? count + " original video record(s) retrieved successfully."
+          : "No videos found.";
+
+        status.className = count ? "status" : "error";
+
+        db.close();
+      };
+
+      transaction.onabort = () => {
+        status.textContent = "Database reading was interrupted.";
+        status.className = "error";
+        db.close();
+      };
+    }
+
+    async function startRecoveryTest() {
+      if (!indexedDB.databases) {
+        status.textContent =
+          "This browser does not support safe database discovery.";
+
+        return;
+      }
+
+      try {
+        const databases = await indexedDB.databases();
+
+        const existing = databases.find(
+          item => item.name === DB_NAME
+        );
+
+        if (!existing) {
+          status.textContent =
+            "Original database not found. No new database was created.";
+
+          return;
+        }
+
+        const request = indexedDB.open(DB_NAME);
+
+        request.onupgradeneeded = () => {
+          request.transaction.abort();
+          status.textContent =
+            "Unexpected upgrade request. Aborted for safety.";
+        };
+
+        request.onerror = () => {
+          status.textContent =
+            "Database error: " + request.error;
+
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            status.textContent = "Videos store not found.";
+            db.close();
+            return;
+          }
+
+          loadVideos(db);
+        };
+
+      } catch (error) {
+        status.textContent =
+          "Recovery test failed: " + error.message;
+      }
+    }
+
+    window.addEventListener("beforeunload", () => {
+      videoUrls.forEach(url => URL.revokeObjectURL(url));
+    });
+
+    startRecoveryTest();
+  </script>
+
+</body>
+</html>
