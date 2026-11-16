@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyTube Video Export</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101522;
+      color: white;
+      padding: 20px;
+    }
+
+    .video-card {
+      background: #202a3b;
+      padding: 16px;
+      margin: 14px 0;
+      border-radius: 12px;
+    }
+
+    button {
+      background: #536dfe;
+      color: white;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    #status {
+      color: #aab7ff;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>MyTube Video Export</h2>
+
+  <p id="status">Checking your original videos...</p>
+  <div id="video-list"></div>
+
+  <script>
+    const DB_NAME = "mytube-library";
+    const STORE_NAME = "videos";
+
+    const status = document.getElementById("status");
+    const list = document.getElementById("video-list");
+
+    function formatBytes(bytes) {
+      return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    }
+
+    async function loadVideos() {
+      try {
+        if (!indexedDB.databases) {
+          status.textContent =
+            "This browser cannot safely check the existing database.";
+          return;
+        }
+
+        const databases = await indexedDB.databases();
+
+        const exists = databases.some(
+          database => database.name === DB_NAME
+        );
+
+        if (!exists) {
+          status.textContent = "MyTube database not found.";
+          return;
+        }
+
+        const request = indexedDB.open(DB_NAME);
+
+        request.onupgradeneeded = () => {
+          request.transaction.abort();
+        };
+
+        request.onerror = () => {
+          status.textContent = "Could not open the existing database.";
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            status.textContent = "Videos store not found.";
+            db.close();
+            return;
+          }
+
+          const transaction = db.transaction(
+            STORE_NAME,
+            "readonly"
+          );
+
+          const store = transaction.objectStore(STORE_NAME);
+          const cursorRequest = store.openCursor();
+
+          let found = 0;
+
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+
+            if (!cursor) {
+              status.textContent =
+                found + " original video(s) ready for export.";
+
+              db.close();
+              return;
+            }
+
+            const record = cursor.value;
+
+            if (record.file instanceof Blob) {
+              found++;
+
+              const card = document.createElement("div");
+              card.className = "video-card";
+
+              const name = document.createElement("h3");
+              name.textContent = record.name;
+
+              const size = document.createElement("p");
+              size.textContent = formatBytes(record.file.size);
+
+              const button = document.createElement("button");
+              button.textContent = "Download original video";
+
+              const url = URL.createObjectURL(record.file);
+
+              button.addEventListener("click", () => {
+                const link = document.createElement("a");
+
+                link.href = url;
+                link.download = record.name;
+
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+              });
+
+              card.append(name, size, button);
+              list.appendChild(card);
+            }
+
+            cursor.continue();
+          };
+
+          cursorRequest.onerror = () => {
+            status.textContent =
+              "Could not read the video records.";
+            db.close();
+          };
+        };
+
+      } catch (error) {
+        status.textContent =
+          "Export page error: " + error.message;
+      }
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>
