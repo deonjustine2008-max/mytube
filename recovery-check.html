@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyTube - Recovery Check</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #10131c;
+      color: #ffffff;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #8da2ff;
+    }
+
+    .panel {
+      background: #1d2332;
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 18px;
+      overflow-wrap: anywhere;
+    }
+
+    button {
+      background: #637cff;
+      color: white;
+      border: none;
+      padding: 13px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .video {
+      border-bottom: 1px solid #42495a;
+      padding: 12px 0;
+    }
+
+    .success {
+      color: #76e6a1;
+    }
+
+    .error {
+      color: #ff9292;
+    }
+
+    .warning {
+      color: #ffd477;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>MyTube Recovery Check</h1>
+
+  <p>
+    This page checks whether your original video database
+    and video records are still available.
+  </p>
+
+  <div class="panel">
+    <h3>Database status</h3>
+    <p id="status">Waiting to start...</p>
+    <button id="check-button">Check Database</button>
+  </div>
+
+  <div class="panel">
+    <h3>Database information</h3>
+    <div id="database-info">Not checked yet.</div>
+  </div>
+
+  <div class="panel">
+    <h3>Video records</h3>
+    <div id="video-list">Not checked yet.</div>
+  </div>
+
+  <script>
+    const DB_NAME = "mytube-library";
+    const STORE_NAME = "videos";
+
+    const status = document.getElementById("status");
+    const databaseInfo = document.getElementById("database-info");
+    const videoList = document.getElementById("video-list");
+    const checkButton = document.getElementById("check-button");
+
+    function showStatus(message, className = "") {
+      status.className = className;
+      status.textContent = message;
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return "Unknown";
+
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      let value = bytes;
+      let unit = 0;
+
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit++;
+      }
+
+      return value.toFixed(2) + " " + units[unit];
+    }
+
+    function inspectDatabase() {
+      if (!indexedDB.databases) {
+        showStatus(
+          "This Chrome version does not support safe database discovery.",
+          "warning"
+        );
+
+        databaseInfo.textContent =
+          "No database was opened. We avoided opening a possibly new database.";
+
+        return;
+      }
+
+      showStatus("Checking existing databases...");
+
+      indexedDB.databases()
+        .then(databases => {
+          const existing = databases.find(
+            database => database.name === DB_NAME
+          );
+
+          if (!existing) {
+            showStatus(
+              "The original database was not found in this browser origin.",
+              "error"
+            );
+
+            databaseInfo.textContent =
+              "Database: mytube-library — Not found.";
+
+            videoList.textContent =
+              "No database was opened or created.";
+
+            return;
+          }
+
+          databaseInfo.textContent =
+            "Database: " + DB_NAME +
+            " | Version: " + existing.version;
+
+          openExistingDatabase();
+        })
+        .catch(error => {
+          showStatus(
+            "Could not inspect databases: " + error.message,
+            "error"
+          );
+        });
+    }
+
+    function openExistingDatabase() {
+      showStatus("Opening the existing database in read-only mode...");
+
+      // No version is specified.
+      // This function is only called after confirming
+      // that the database already exists.
+
+      const request = indexedDB.open(DB_NAME);
+
+      request.onerror = () => {
+        showStatus(
+          "Database opening failed: " + request.error,
+          "error"
+        );
+      };
+
+      request.onupgradeneeded = () => {
+        // Safety guard: never create or upgrade a database.
+        request.transaction.abort();
+
+        showStatus(
+          "Unexpected database upgrade request. Aborted for safety.",
+          "warning"
+        );
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+
+        db.onversionchange = () => db.close();
+
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          showStatus(
+            "Database exists, but the videos store is missing.",
+            "warning"
+          );
+
+          videoList.textContent = "Videos store not found.";
+
+          db.close();
+          return;
+        }
+
+        readVideoRecords(db);
+      };
+    }
+
+    function readVideoRecords(db) {
+      let transaction;
+
+      try {
+        transaction = db.transaction(STORE_NAME, "readonly");
+      } catch (error) {
+        showStatus(
+          "Could not read database: " + error.message,
+          "error"
+        );
+
+        db.close();
+        return;
+      }
+
+      const store = transaction.objectStore(STORE_NAME);
+      const countRequest = store.count();
+      const records = [];
+
+      const cursorRequest = store.openCursor();
+
+      countRequest.onerror = () => {
+        showStatus("Could not count video records.", "error");
+      };
+
+      cursorRequest.onsuccess = event => {
+        const cursor = event.target.result;
+
+        if (!cursor) return;
+
+        const record = cursor.value;
+
+        records.push({
+          name: record.name || "Unnamed video",
+          size: Number(record.size) || 0,
+          type: record.type || "Unknown",
+          hasFile: !!record.file,
+          fileSize: record.file?.size ?? null,
+          id: record.id || "Unknown"
+        });
+
+        cursor.continue();
+      };
+
+      cursorRequest.onerror = () => {
+        showStatus("Could not read video records.", "error");
+      };
+
+      transaction.oncomplete = () => {
+        const count = countRequest.result;
+
+        showStatus(
+          "Database successfully inspected.",
+          "success"
+        );
+
+        databaseInfo.textContent =
+          "Database: " + DB_NAME +
+          " | Videos store: " + STORE_NAME +
+          " | Video records: " + count;
+
+        videoList.replaceChildren();
+
+        if (count === 0) {
+          videoList.textContent =
+            "The database exists, but contains zero video records.";
+        }
+
+        records.forEach(record => {
+          const item = document.createElement("div");
+          item.className = "video";
+
+          const name = document.createElement("strong");
+          name.textContent = record.name;
+
+          const details = document.createElement("p");
+          details.textContent =
+            "Recorded size: " + formatBytes(record.size) +
+            " | File object: " + (record.hasFile ? "Present" : "Missing") +
+            " | File size: " +
+            (record.fileSize === null
+              ? "Unknown"
+              : formatBytes(record.fileSize));
+
+          const type = document.createElement("p");
+          type.textContent = "Type: " + record.type;
+
+          item.append(name, details, type);
+          videoList.append(item);
+        });
+
+        if (count > 0) {
+          const note = document.createElement("p");
+          note.className = "success";
+          note.textContent =
+            "Video records were found. Do not modify the database.";
+          videoList.append(note);
+        }
+
+        db.close();
+      };
+
+      transaction.onerror = () => {
+        showStatus(
+          "Database read failed: " +
+          (transaction.error?.message || "Unknown error"),
+          "error"
+        );
+
+        db.close();
+      };
+
+      transaction.onabort = () => {
+        showStatus("Database read was aborted.", "error");
+        db.close();
+      };
+    }
+
+    checkButton.addEventListener("click", () => {
+      checkButton.disabled = true;
+
+      inspectDatabase();
+
+      setTimeout(() => {
+        checkButton.disabled = false;
+      }, 3000);
+    });
+  </script>
+
+</body>
+</html>
